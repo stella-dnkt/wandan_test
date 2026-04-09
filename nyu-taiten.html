@@ -1,168 +1,218 @@
-<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);">入退店管理リスト（10名）</h2>
-<div style="padding:1rem 0;">
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>入退店管理 &amp; 料金表</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:sans-serif;padding:12px;margin:0}
+
+/* 入退店リスト */
+.row{display:flex;align-items:center;gap:8px;background:#fff;border:0.5px solid #ddd;border-radius:10px;padding:12px 14px;}
+.num{font-size:16px;color:#666;min-width:26px;font-weight:500;}
+.btn{font-size:15px;font-weight:500;padding:8px 14px;border-radius:6px;cursor:pointer;border:0.5px solid;white-space:nowrap;transition:opacity 0.1s;}
+.btn:disabled{opacity:0.35;cursor:default;}
+.btn-in{background:#e1f5ee;color:#0f6e56;border-color:#5dcaa5;}
+.btn-out{background:#fcebeb;color:#a32d2d;border-color:#f09595;}
+.btn-undo{background:#f5f5f5;color:#666;border-color:#ccc;}
+.elapsed{font-size:14px;color:#888;white-space:nowrap;}
+.times{font-size:14px;color:#222;white-space:nowrap;}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;}
+.dot-in{background:#1D9E75;}
+.dot-out{background:#888780;}
+
+/* 区切り */
+.section-title{font-size:18px;font-weight:500;margin:0;}
+.divider{border:none;border-top:1px solid #e0e0e0;margin:1.5rem 0;}
+
+/* 料金表 */
+table{border-collapse:collapse;table-layout:fixed;width:100%}
+th,td{border:1px solid #aaa;text-align:center;padding:9px 4px;font-size:14px;}
+col.label-col{width:52px}
+col.num-col{width:calc((100% - 52px)/6)}
+.axis-corner{background:#e8e8e8;color:#000;font-weight:bold;}
+.row-axis{background:#d9534f;color:#fff;font-weight:bold;cursor:pointer;}
+.col-axis{background:#2a6db5;color:#fff;font-weight:bold;cursor:pointer;}
+.price-cell{cursor:default;}
+.row-hl{background:#ffd6d6}
+.col-hl{background:#cce4ff}
+.cross-hl{background:#e0d0ff;font-weight:bold}
+</style>
+</head>
+<body>
+
+<!-- 入退店リスト -->
+<div style="padding:1rem 0 0;">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
-    <h2 style="font-size:18px;font-weight:500;margin:0;color:var(--color-text-primary);">入退店リスト</h2>
+    <h2 class="section-title">入退店リスト</h2>
     <div style="display:flex;align-items:center;gap:8px;">
-      <span id="save-indicator" style="font-size:12px;color:var(--color-text-tertiary);"></span>
-      <button onclick="resetAll()" style="font-size:13px;padding:5px 12px;color:var(--color-text-secondary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:transparent;cursor:pointer;">リセット</button>
+      <span id="save-indicator" style="font-size:13px;color:#aaa;"></span>
+      <button onclick="resetAll()" style="font-size:14px;padding:7px 14px;color:#666;border:0.5px solid #ccc;border-radius:6px;background:transparent;cursor:pointer;">リセット</button>
     </div>
   </div>
   <div id="list" style="display:flex;flex-direction:column;gap:8px;"></div>
 </div>
 
-<style>
-.row{display:flex;align-items:center;gap:8px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:10px 14px;justify-content:flex-start;}
-.num{font-size:14px;color:var(--color-text-secondary);min-width:22px;font-weight:500;}
-.btn{font-size:13px;font-weight:500;padding:5px 12px;border-radius:var(--border-radius-md);cursor:pointer;border:0.5px solid;white-space:nowrap;transition:opacity 0.1s;}
-.btn:disabled{opacity:0.35;cursor:default;}
-.btn-in{background:var(--color-background-success);color:var(--color-text-success);border-color:var(--color-border-success);}
-.btn-out{background:var(--color-background-danger);color:var(--color-text-danger);border-color:var(--color-border-danger);}
-.btn-undo{background:var(--color-background-secondary);color:var(--color-text-secondary);border-color:var(--color-border-secondary);}
-.elapsed{font-size:13px;color:var(--color-text-secondary);white-space:nowrap;}
-.times{font-size:13px;color:var(--color-text-primary);white-space:nowrap;}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;}
-.dot-in{background:#1D9E75;}
-.dot-out{background:#888780;}
-</style>
+<hr class="divider">
+
+<!-- 料金表 -->
+<div style="padding-bottom:1rem;">
+  <h2 class="section-title" style="margin-bottom:1rem;">料金表</h2>
+  <label style="font-size:15px;">利用時間:
+    <select id="timeSelect" style="font-size:15px;margin-left:4px;">
+      <option value="0.5">0:30</option>
+      <option value="1" selected>1:00</option>
+      <option value="1.5">1:30</option>
+      <option value="2">2:00</option>
+      <option value="3">3:00</option>
+      <option value="4">4:00</option>
+      <option value="5">5:00</option>
+    </select>
+  </label>
+  <br><br>
+  <table id="priceTable">
+    <colgroup>
+      <col class="label-col">
+      <col class="num-col"><col class="num-col"><col class="num-col">
+      <col class="num-col"><col class="num-col"><col class="num-col">
+    </colgroup>
+    <thead>
+      <tr>
+        <th class="axis-corner">小人↓</th>
+        <th class="axis-corner" colspan="6">大人 →</th>
+      </tr>
+      <tr id="headerRow">
+        <th class="axis-corner"></th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
 
 <script>
-const N = 10;
-const STORAGE_KEY = 'checkin-list-v1';
+/* ---- 入退店 ---- */
+const N = 10, STORAGE_KEY = 'checkin-list-v1';
 let states = Array.from({length:N}, () => ({inTime:null, outTime:null, prev:null}));
 
-function fmt(d){
-  return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
-}
-
+function fmt(d){return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
 function elapsedStr(inTime, outTime){
-  const end = outTime || new Date();
-  const ms = end - inTime;
+  const ms = (outTime||new Date()) - inTime;
   const totalMin = Math.ceil(ms/60000/30)*30;
-  const h = Math.floor(totalMin/60);
-  const m = totalMin%60;
-  return h+':'+m.toString().padStart(2,'0');
+  return Math.floor(totalMin/60)+':'+(totalMin%60).toString().padStart(2,'0');
 }
-
 function serializeStates(){
-  return JSON.stringify(states.map(s => ({
-    inTime: s.inTime ? s.inTime.toISOString() : null,
-    outTime: s.outTime ? s.outTime.toISOString() : null,
-    prev: s.prev ? {
-      inTime: s.prev.inTime ? s.prev.inTime.toISOString() : null,
-      outTime: s.prev.outTime ? s.prev.outTime.toISOString() : null,
-      prev: null
-    } : null
+  return JSON.stringify(states.map(s=>({
+    inTime: s.inTime?s.inTime.toISOString():null,
+    outTime: s.outTime?s.outTime.toISOString():null,
+    prev: s.prev?{inTime:s.prev.inTime?s.prev.inTime.toISOString():null,outTime:s.prev.outTime?s.prev.outTime.toISOString():null,prev:null}:null
   })));
 }
-
 function deserializeStates(json){
-  const arr = JSON.parse(json);
-  return arr.map(s => ({
-    inTime: s.inTime ? new Date(s.inTime) : null,
-    outTime: s.outTime ? new Date(s.outTime) : null,
-    prev: s.prev ? {
-      inTime: s.prev.inTime ? new Date(s.prev.inTime) : null,
-      outTime: s.prev.outTime ? new Date(s.prev.outTime) : null,
-      prev: null
-    } : null
+  return JSON.parse(json).map(s=>({
+    inTime: s.inTime?new Date(s.inTime):null,
+    outTime: s.outTime?new Date(s.outTime):null,
+    prev: s.prev?{inTime:s.prev.inTime?new Date(s.prev.inTime):null,outTime:s.prev.outTime?new Date(s.prev.outTime):null,prev:null}:null
   }));
 }
-
-async function saveStates(){
-  try {
-    await window.storage.set(STORAGE_KEY, serializeStates());
+function saveStates(){
+  try{
+    localStorage.setItem(STORAGE_KEY, serializeStates());
     const ind = document.getElementById('save-indicator');
-    const now = new Date();
-    ind.textContent = fmt(now) + ' 保存済み';
-    setTimeout(() => { ind.textContent = ''; }, 3000);
-  } catch(e) {
-    console.error('save failed', e);
-  }
+    ind.textContent = fmt(new Date())+' 保存済み';
+    setTimeout(()=>{ind.textContent='';}, 3000);
+  }catch(e){console.error('save failed',e);}
 }
-
-async function loadStates(){
-  try {
-    const result = await window.storage.get(STORAGE_KEY);
-    if(result && result.value){
-      states = deserializeStates(result.value);
-    }
-  } catch(e) {
-    // no saved data
-  }
+function loadStates(){
+  try{
+    const v = localStorage.getItem(STORAGE_KEY);
+    if(v) states = deserializeStates(v);
+  }catch(e){}
   render();
 }
-
 function render(){
   const list = document.getElementById('list');
   list.innerHTML = '';
-  states.forEach((s,i) => {
+  states.forEach((s,i)=>{
     const row = document.createElement('div');
     row.className = 'row';
-
     const num = document.createElement('span');
-    num.className = 'num';
-    num.textContent = i+1;
-
+    num.className = 'num'; num.textContent = i+1;
     const btnIn = document.createElement('button');
-    btnIn.className = 'btn btn-in';
-    btnIn.textContent = '入店';
-    btnIn.disabled = !!s.inTime;
-    btnIn.onclick = () => {
-      const prev = {inTime:s.inTime, outTime:s.outTime, prev:s.prev};
-      states[i] = {inTime:new Date(), outTime:null, prev};
-      render(); saveStates();
-    };
-
+    btnIn.className = 'btn btn-in'; btnIn.textContent = '入店'; btnIn.disabled = !!s.inTime;
+    btnIn.onclick = ()=>{const prev={inTime:s.inTime,outTime:s.outTime,prev:s.prev};states[i]={inTime:new Date(),outTime:null,prev};render();saveStates();};
     const btnOut = document.createElement('button');
-    btnOut.className = 'btn btn-out';
-    btnOut.textContent = '退店';
-    btnOut.disabled = !s.inTime || !!s.outTime;
-    btnOut.onclick = () => {
-      const prev = {inTime:s.inTime, outTime:s.outTime, prev:s.prev};
-      states[i] = {inTime:s.inTime, outTime:new Date(), prev};
-      render(); saveStates();
-    };
-
+    btnOut.className = 'btn btn-out'; btnOut.textContent = '退店'; btnOut.disabled = !s.inTime||!!s.outTime;
+    btnOut.onclick = ()=>{const prev={inTime:s.inTime,outTime:s.outTime,prev:s.prev};states[i]={inTime:s.inTime,outTime:new Date(),prev};render();saveStates();};
     const btnUndo = document.createElement('button');
-    btnUndo.className = 'btn btn-undo';
-    btnUndo.textContent = '戻る';
-    btnUndo.disabled = !s.prev;
-    btnUndo.onclick = () => { states[i] = s.prev; render(); saveStates(); };
-
+    btnUndo.className = 'btn btn-undo'; btnUndo.textContent = '戻る'; btnUndo.disabled = !s.prev;
+    btnUndo.onclick = ()=>{states[i]=s.prev;render();saveStates();};
     const elapsed = document.createElement('span');
-    elapsed.className = 'elapsed';
-    elapsed.textContent = s.inTime ? '('+elapsedStr(s.inTime, s.outTime)+')' : '';
-
+    elapsed.className = 'elapsed'; elapsed.textContent = s.inTime?'('+elapsedStr(s.inTime,s.outTime)+')':'';
     const times = document.createElement('span');
     times.className = 'times';
     if(s.inTime){
       const dot = document.createElement('span');
-      dot.className = 'dot '+(s.outTime ? 'dot-out' : 'dot-in');
+      dot.className = 'dot '+(s.outTime?'dot-out':'dot-in');
       times.appendChild(dot);
-      times.appendChild(document.createTextNode(fmt(s.inTime)+' 〜 '+(s.outTime ? fmt(s.outTime) : '--:--')));
-    } else {
-      times.textContent = '--:-- 〜 --:--';
-      times.style.color = 'var(--color-text-tertiary)';
-    }
-
-    row.appendChild(num);
-    row.appendChild(btnIn);
-    row.appendChild(btnOut);
-    row.appendChild(btnUndo);
-    row.appendChild(elapsed);
-    row.appendChild(times);
+      times.appendChild(document.createTextNode(fmt(s.inTime)+' 〜 '+(s.outTime?fmt(s.outTime):'--:--')));
+    }else{times.textContent='--:-- 〜 --:--';times.style.color='#bbb';}
+    row.appendChild(num);row.appendChild(btnIn);row.appendChild(btnOut);row.appendChild(btnUndo);row.appendChild(elapsed);row.appendChild(times);
     list.appendChild(row);
   });
 }
-
-function resetAll(){
-  states.forEach((_,i) => { states[i]={inTime:null,outTime:null,prev:null}; });
-  render(); saveStates();
-}
-
-setInterval(() => {
-  if(states.some(s => s.inTime && !s.outTime)) render();
-}, 10000);
-
+function resetAll(){states.forEach((_,i)=>{states[i]={inTime:null,outTime:null,prev:null};});render();saveStates();}
+setInterval(()=>{if(states.some(s=>s.inTime&&!s.outTime))render();}, 10000);
 loadStates();
+
+/* ---- 料金表 ---- */
+const tbody = document.getElementById('tbody');
+const headerRow = document.getElementById('headerRow');
+const timeSelect = document.getElementById('timeSelect');
+const priceTable = document.getElementById('priceTable');
+let selRow = null, selCol = null;
+
+for(let a=0;a<=5;a++){
+  const th = document.createElement('th');
+  th.textContent = a; th.className = 'col-axis'; th.dataset.col = a;
+  headerRow.appendChild(th);
+}
+function buildTable(m){
+  tbody.innerHTML = '';
+  for(let c=0;c<=5;c++){
+    const tr = document.createElement('tr');
+    const th = document.createElement('th');
+    th.textContent = c; th.className = 'row-axis'; th.dataset.row = c;
+    tr.appendChild(th);
+    for(let a=0;a<=5;a++){
+      const td = document.createElement('td');
+      td.textContent = (c===0&&a===0)?'-':Math.round((c*650+a*1300)*m);
+      td.className = 'price-cell'; td.dataset.row = c; td.dataset.col = a;
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  if(selRow!==null&&selCol!==null)applyHL(selRow,selCol);
+}
+function clearHL(){document.querySelectorAll('.row-hl,.col-hl,.cross-hl').forEach(el=>el.classList.remove('row-hl','col-hl','cross-hl'));}
+function applyHL(row,col){
+  clearHL();
+  Array.from(tbody.rows).forEach(tr=>{const rh=tr.cells[0];if(Number(rh.dataset.row)===row)rh.classList.add('row-hl');});
+  Array.from(headerRow.cells).forEach(th=>{if(th.dataset.col!==undefined&&Number(th.dataset.col)===col)th.classList.add('col-hl');});
+  document.querySelectorAll('.price-cell').forEach(td=>{
+    const r=Number(td.dataset.row),c=Number(td.dataset.col);
+    if(r===row&&c===col)td.classList.add('cross-hl');
+    else if(r===row)td.classList.add('row-hl');
+    else if(c===col)td.classList.add('col-hl');
+  });
+}
+priceTable.addEventListener('click',e=>{
+  const el = e.target;
+  if(el.classList.contains('row-axis')&&el.dataset.row!==undefined){selRow=Number(el.dataset.row);if(selCol===null)selCol=0;applyHL(selRow,selCol);}
+  else if(el.classList.contains('col-axis')&&el.dataset.col!==undefined){selCol=Number(el.dataset.col);if(selRow===null)selRow=0;applyHL(selRow,selCol);}
+});
+timeSelect.addEventListener('change',()=>buildTable(parseFloat(timeSelect.value)));
+buildTable(1);
 </script>
+</body>
+</html>
