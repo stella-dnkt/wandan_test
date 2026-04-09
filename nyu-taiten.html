@@ -306,7 +306,9 @@ document.getElementById('deposit').addEventListener('input', updateChange);
 function clearSelection(){
   selRow = null; selCol = null;
   document.getElementById('deposit').value = '';
+  timeSelect.value = '1';
   clearHL();
+  buildTable(1);
   document.getElementById('change-box').style.display = 'none';
 }
 timeSelect.addEventListener('change',()=>{buildTable(parseFloat(timeSelect.value));updateChange();});
