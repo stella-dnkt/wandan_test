@@ -94,10 +94,19 @@ col.num-col{width:calc((100% - 52px)/6)}
       <input id="deposit" type="number" min="0" step="10" placeholder="0" style="font-size:15px;width:90px;margin-left:4px;padding:4px 6px;border:1px solid #ccc;border-radius:6px;">
       <span style="font-size:15px;margin-left:2px;">円</span>
     </label>
+    <label style="font-size:15px;">物販:
+      <input id="goods" type="number" min="0" step="10" placeholder="0" style="font-size:15px;width:80px;margin-left:4px;padding:4px 6px;border:1px solid #ccc;border-radius:6px;">
+      <span style="font-size:15px;margin-left:2px;">円</span>
+    </label>
+    <label style="font-size:15px;">クーポン:
+      <input id="coupon" type="number" min="0" step="10" placeholder="0" style="font-size:15px;width:80px;margin-left:4px;padding:4px 6px;border:1px solid #ccc;border-radius:6px;">
+      <span style="font-size:15px;margin-left:2px;">円</span>
+    </label>
     <button onclick="clearSelection()" style="font-size:14px;padding:6px 12px;color:#666;border:0.5px solid #ccc;border-radius:6px;background:transparent;cursor:pointer;">クリア</button>
   </div>
   <div id="change-box" style="display:none;background:#f5f5f5;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:15px;line-height:2;">
-    小計: <strong id="label-price">—</strong> 円　<span id="label-members" style="font-size:13px;color:#888;"></span><br>
+    小計: <strong id="label-price">—</strong> 円<br>
+    <span id="label-members" style="font-size:13px;color:#888;"></span><br>
     － お預かり: <strong id="label-deposit">—</strong> 円　＝　おつり: <strong id="label-change" style="font-size:18px;color:#0f6e56;"></strong> 円
   </div>
   <table id="priceTable">
@@ -286,10 +295,17 @@ function updateChange(){
   const box = document.getElementById('change-box');
   if(selRow===null||selCol===null||(selRow===0&&selCol===0)){box.style.display='none';return;}
   const m = parseFloat(timeSelect.value);
-  const price = Math.round((selRow*500+selCol*1300)*m);
+  const base = Math.round((selRow*500+selCol*1300)*m);
+  const goods = parseInt(document.getElementById('goods').value)||0;
+  const coupon = parseInt(document.getElementById('coupon').value)||0;
+  const price = base + goods - coupon;
   const dep = parseInt(document.getElementById('deposit').value)||0;
   document.getElementById('label-price').textContent = price.toLocaleString();
-  document.getElementById('label-members').textContent = '（大人：'+selCol+'名　小人：'+selRow+'名）';
+  let members = '（大人：'+selCol+'名　小人：'+selRow+'名';
+  if(goods) members += '　物販：'+goods.toLocaleString()+'円';
+  if(coupon) members += '　クーポン：－'+coupon.toLocaleString()+'円';
+  members += '）';
+  document.getElementById('label-members').textContent = members;
   document.getElementById('label-deposit').textContent = dep.toLocaleString();
   const change = dep - price;
   const lc = document.getElementById('label-change');
@@ -303,9 +319,13 @@ priceTable.addEventListener('click',e=>{
   else if(el.classList.contains('col-axis')&&el.dataset.col!==undefined){selCol=Number(el.dataset.col);if(selRow===null)selRow=0;applyHL(selRow,selCol);}
 });
 document.getElementById('deposit').addEventListener('input', updateChange);
+document.getElementById('goods').addEventListener('input', updateChange);
+document.getElementById('coupon').addEventListener('input', updateChange);
 function clearSelection(){
   selRow = null; selCol = null;
   document.getElementById('deposit').value = '';
+  document.getElementById('goods').value = '';
+  document.getElementById('coupon').value = '';
   timeSelect.value = '1';
   clearHL();
   buildTable(1);
