@@ -78,18 +78,28 @@ col.num-col{width:calc((100% - 52px)/6)}
 <!-- 料金表 -->
 <div style="padding-bottom:1rem;">
   <h2 class="section-title" style="margin-bottom:1rem;">料金表</h2>
-  <label style="font-size:15px;">利用時間:
-    <select id="timeSelect" style="font-size:15px;margin-left:4px;">
-      <option value="0.5">0:30</option>
-      <option value="1" selected>1:00</option>
-      <option value="1.5">1:30</option>
-      <option value="2">2:00</option>
-      <option value="3">3:00</option>
-      <option value="4">4:00</option>
-      <option value="5">5:00</option>
-    </select>
-  </label>
-  <br><br>
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:12px;">
+    <label style="font-size:15px;">利用時間:
+      <select id="timeSelect" style="font-size:15px;margin-left:4px;">
+        <option value="0.5">0:30</option>
+        <option value="1" selected>1:00</option>
+        <option value="1.5">1:30</option>
+        <option value="2">2:00</option>
+        <option value="3">3:00</option>
+        <option value="4">4:00</option>
+        <option value="5">5:00</option>
+      </select>
+    </label>
+    <label style="font-size:15px;">お預かり:
+      <input id="deposit" type="number" min="0" step="10" placeholder="0" style="font-size:15px;width:90px;margin-left:4px;padding:4px 6px;border:1px solid #ccc;border-radius:6px;">
+      <span style="font-size:15px;margin-left:2px;">円</span>
+    </label>
+    <button onclick="clearSelection()" style="font-size:14px;padding:6px 12px;color:#666;border:0.5px solid #ccc;border-radius:6px;background:transparent;cursor:pointer;">クリア</button>
+  </div>
+  <div id="change-box" style="display:none;background:#f5f5f5;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:15px;line-height:2;">
+    小計: <strong id="label-price">—</strong> 円　<span id="label-members" style="font-size:13px;color:#888;"></span><br>
+    － お預かり: <strong id="label-deposit">—</strong> 円　＝　おつり: <strong id="label-change" style="font-size:18px;color:#0f6e56;"></strong> 円
+  </div>
   <table id="priceTable">
     <colgroup>
       <col class="label-col">
@@ -270,13 +280,36 @@ function applyHL(row,col){
     else if(r===row)td.classList.add('row-hl');
     else if(c===col)td.classList.add('col-hl');
   });
+  updateChange();
+}
+function updateChange(){
+  const box = document.getElementById('change-box');
+  if(selRow===null||selCol===null||(selRow===0&&selCol===0)){box.style.display='none';return;}
+  const m = parseFloat(timeSelect.value);
+  const price = Math.round((selRow*500+selCol*1300)*m);
+  const dep = parseInt(document.getElementById('deposit').value)||0;
+  document.getElementById('label-price').textContent = price.toLocaleString();
+  document.getElementById('label-members').textContent = '（大人：'+selCol+'名　小人：'+selRow+'名）';
+  document.getElementById('label-deposit').textContent = dep.toLocaleString();
+  const change = dep - price;
+  const lc = document.getElementById('label-change');
+  lc.textContent = change.toLocaleString();
+  lc.style.color = change >= 0 ? '#0f6e56' : '#a32d2d';
+  box.style.display = 'block';
 }
 priceTable.addEventListener('click',e=>{
   const el = e.target;
   if(el.classList.contains('row-axis')&&el.dataset.row!==undefined){selRow=Number(el.dataset.row);if(selCol===null)selCol=0;applyHL(selRow,selCol);}
   else if(el.classList.contains('col-axis')&&el.dataset.col!==undefined){selCol=Number(el.dataset.col);if(selRow===null)selRow=0;applyHL(selRow,selCol);}
 });
-timeSelect.addEventListener('change',()=>buildTable(parseFloat(timeSelect.value)));
+document.getElementById('deposit').addEventListener('input', updateChange);
+function clearSelection(){
+  selRow = null; selCol = null;
+  document.getElementById('deposit').value = '';
+  clearHL();
+  document.getElementById('change-box').style.display = 'none';
+}
+timeSelect.addEventListener('change',()=>{buildTable(parseFloat(timeSelect.value));updateChange();});
 buildTable(1);
 </script>
 </body>
