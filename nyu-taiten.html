@@ -8,7 +8,6 @@
 *{box-sizing:border-box}
 body{font-family:sans-serif;padding:12px;margin:0}
 
-/* 入退店リスト */
 .row{display:flex;align-items:center;gap:8px;background:#fff;border:0.5px solid #ddd;border-radius:10px;padding:12px 14px;}
 .num{font-size:16px;color:#666;min-width:26px;font-weight:500;}
 .btn{font-size:15px;font-weight:500;padding:8px 14px;border-radius:6px;cursor:pointer;border:0.5px solid;white-space:nowrap;transition:opacity 0.1s;}
@@ -22,9 +21,18 @@ body{font-family:sans-serif;padding:12px;margin:0}
 .dot-in{background:#1D9E75;}
 .dot-out{background:#888780;}
 
-/* 区切り */
 .section-title{font-size:18px;font-weight:500;margin:0;}
 .divider{border:none;border-top:1px solid #e0e0e0;margin:1.5rem 0;}
+
+/* ポップアップ */
+#modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;align-items:center;justify-content:center;}
+#modal-overlay.show{display:flex;}
+#modal-box{background:#fff;border-radius:12px;padding:24px 20px;width:280px;text-align:center;}
+#modal-box p{font-size:16px;font-weight:500;margin:0 0 20px;color:#222;}
+#modal-box .modal-btns{display:flex;gap:10px;justify-content:center;}
+#modal-box .modal-btns button{flex:1;font-size:15px;font-weight:500;padding:10px 0;border-radius:8px;cursor:pointer;border:0.5px solid;}
+#modal-yes{background:#e1f5ee;color:#0f6e56;border-color:#5dcaa5;}
+#modal-no{background:#f5f5f5;color:#666;border-color:#ccc;}
 
 /* 料金表 */
 table{border-collapse:collapse;table-layout:fixed;width:100%}
@@ -41,6 +49,17 @@ col.num-col{width:calc((100% - 52px)/6)}
 </style>
 </head>
 <body>
+
+<!-- ポップアップ -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <p>新規入店を開始していいですか？</p>
+    <div class="modal-btns">
+      <button id="modal-yes" onclick="modalConfirm()">はい</button>
+      <button id="modal-no" onclick="modalCancel()">いいえ</button>
+    </div>
+  </div>
+</div>
 
 <!-- 入退店リスト -->
 <div style="padding:1rem 0 0;">
@@ -94,6 +113,7 @@ col.num-col{width:calc((100% - 52px)/6)}
 /* ---- 入退店 ---- */
 const N = 10, STORAGE_KEY = 'checkin-list-v1';
 let states = Array.from({length:N}, () => ({inTime:null, outTime:null, prev:null}));
+let pendingReentryIndex = null;
 
 function fmt(d){return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
 function elapsedStr(inTime, outTime){
@@ -124,31 +144,67 @@ function saveStates(){
   }catch(e){console.error('save failed',e);}
 }
 function loadStates(){
-  try{
-    const v = localStorage.getItem(STORAGE_KEY);
-    if(v) states = deserializeStates(v);
-  }catch(e){}
+  try{const v=localStorage.getItem(STORAGE_KEY);if(v)states=deserializeStates(v);}catch(e){}
   render();
 }
+
+function showModal(index){
+  pendingReentryIndex = index;
+  document.getElementById('modal-overlay').classList.add('show');
+}
+function modalConfirm(){
+  document.getElementById('modal-overlay').classList.remove('show');
+  const i = pendingReentryIndex;
+  const prev = {inTime:states[i].inTime, outTime:states[i].outTime, prev:states[i].prev};
+  states[i] = {inTime:new Date(), outTime:null, prev};
+  render(); saveStates();
+  pendingReentryIndex = null;
+}
+function modalCancel(){
+  document.getElementById('modal-overlay').classList.remove('show');
+  pendingReentryIndex = null;
+}
+
 function render(){
   const list = document.getElementById('list');
   list.innerHTML = '';
   states.forEach((s,i)=>{
     const row = document.createElement('div');
     row.className = 'row';
+
     const num = document.createElement('span');
     num.className = 'num'; num.textContent = i+1;
+
     const btnIn = document.createElement('button');
-    btnIn.className = 'btn btn-in'; btnIn.textContent = '入店'; btnIn.disabled = !!s.inTime;
-    btnIn.onclick = ()=>{const prev={inTime:s.inTime,outTime:s.outTime,prev:s.prev};states[i]={inTime:new Date(),outTime:null,prev};render();saveStates();};
+    btnIn.className = 'btn btn-in'; btnIn.textContent = '入店';
+    btnIn.disabled = !!(s.inTime && !s.outTime);
+    btnIn.onclick = ()=>{
+      if(s.outTime){
+        showModal(i);
+      } else {
+        const prev = {inTime:s.inTime, outTime:s.outTime, prev:s.prev};
+        states[i] = {inTime:new Date(), outTime:null, prev};
+        render(); saveStates();
+      }
+    };
+
     const btnOut = document.createElement('button');
-    btnOut.className = 'btn btn-out'; btnOut.textContent = '退店'; btnOut.disabled = !s.inTime||!!s.outTime;
-    btnOut.onclick = ()=>{const prev={inTime:s.inTime,outTime:s.outTime,prev:s.prev};states[i]={inTime:s.inTime,outTime:new Date(),prev};render();saveStates();};
+    btnOut.className = 'btn btn-out'; btnOut.textContent = '退店';
+    btnOut.disabled = !s.inTime || !!s.outTime;
+    btnOut.onclick = ()=>{
+      const prev = {inTime:s.inTime, outTime:s.outTime, prev:s.prev};
+      states[i] = {inTime:s.inTime, outTime:new Date(), prev};
+      render(); saveStates();
+    };
+
     const btnUndo = document.createElement('button');
     btnUndo.className = 'btn btn-undo'; btnUndo.textContent = '戻る'; btnUndo.disabled = !s.prev;
     btnUndo.onclick = ()=>{states[i]=s.prev;render();saveStates();};
+
     const elapsed = document.createElement('span');
-    elapsed.className = 'elapsed'; elapsed.textContent = s.inTime?'('+elapsedStr(s.inTime,s.outTime)+')':'';
+    elapsed.className = 'elapsed';
+    elapsed.textContent = s.inTime ? '('+elapsedStr(s.inTime, s.outTime)+')' : '';
+
     const times = document.createElement('span');
     times.className = 'times';
     if(s.inTime){
@@ -156,12 +212,21 @@ function render(){
       dot.className = 'dot '+(s.outTime?'dot-out':'dot-in');
       times.appendChild(dot);
       times.appendChild(document.createTextNode(fmt(s.inTime)+' 〜 '+(s.outTime?fmt(s.outTime):'--:--')));
-    }else{times.textContent='--:-- 〜 --:--';times.style.color='#bbb';}
-    row.appendChild(num);row.appendChild(btnIn);row.appendChild(btnOut);row.appendChild(btnUndo);row.appendChild(elapsed);row.appendChild(times);
+    } else {
+      times.textContent = '--:-- 〜 --:--';
+      times.style.color = '#bbb';
+    }
+
+    row.appendChild(num); row.appendChild(btnIn); row.appendChild(btnOut);
+    row.appendChild(btnUndo); row.appendChild(elapsed); row.appendChild(times);
     list.appendChild(row);
   });
 }
-function resetAll(){states.forEach((_,i)=>{states[i]={inTime:null,outTime:null,prev:null};});render();saveStates();}
+
+function resetAll(){
+  states.forEach((_,i)=>{states[i]={inTime:null,outTime:null,prev:null};});
+  render(); saveStates();
+}
 setInterval(()=>{if(states.some(s=>s.inTime&&!s.outTime))render();}, 10000);
 loadStates();
 
@@ -186,7 +251,7 @@ function buildTable(m){
     tr.appendChild(th);
     for(let a=0;a<=5;a++){
       const td = document.createElement('td');
-      td.textContent = (c===0&&a===0)?'-':Math.round((c*650+a*1300)*m);
+      td.textContent = (c===0&&a===0)?'-':Math.round((c*500+a*1300)*m);
       td.className = 'price-cell'; td.dataset.row = c; td.dataset.col = a;
       tr.appendChild(td);
     }
