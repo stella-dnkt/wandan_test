@@ -7,11 +7,11 @@
       <button onclick="resetAll()" style="font-size:13px;padding:5px 12px;color:var(--color-text-secondary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:transparent;cursor:pointer;">リセット</button>
     </div>
   </div>
-  <div id="list" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;"></div>
+  <div id="list" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;"></div>
 </div>
 
 <style>
-.card{display:flex;flex-direction:column;gap:6px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:10px 10px;}
+.card{display:flex;flex-direction:column;gap:6px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:10px 12px;}
 .card-header{display:flex;align-items:center;gap:6px;}
 .num{font-size:13px;color:var(--color-text-secondary);font-weight:500;min-width:20px;}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0;}
@@ -20,8 +20,8 @@
 .dot-none{background:var(--color-border-tertiary);}
 .times{font-size:12px;color:var(--color-text-primary);white-space:nowrap;}
 .elapsed{font-size:12px;color:var(--color-text-secondary);}
-.btn-row{display:flex;gap:4px;}
-.btn{font-size:12px;font-weight:500;padding:4px 8px;border-radius:var(--border-radius-md);cursor:pointer;border:0.5px solid;white-space:nowrap;transition:opacity 0.1s;flex:1;}
+.btn-row{display:flex;gap:5px;}
+.btn{font-size:13px;font-weight:500;padding:5px 10px;border-radius:var(--border-radius-md);cursor:pointer;border:0.5px solid;white-space:nowrap;transition:opacity 0.1s;flex:1;}
 .btn:disabled{opacity:0.35;cursor:default;}
 .btn-in{background:var(--color-background-success);color:var(--color-text-success);border-color:var(--color-border-success);}
 .btn-out{background:var(--color-background-danger);color:var(--color-text-danger);border-color:var(--color-border-danger);}
@@ -106,9 +106,7 @@ function render(){
     num.textContent = i+1;
 
     const dot = document.createElement('span');
-    if(!s.inTime) dot.className = 'dot dot-none';
-    else if(!s.outTime) dot.className = 'dot dot-in';
-    else dot.className = 'dot dot-out';
+    dot.className = 'dot ' + (!s.inTime ? 'dot-none' : !s.outTime ? 'dot-in' : 'dot-out');
 
     const info = document.createElement('div');
     info.style.cssText = 'display:flex;flex-direction:column;gap:1px;';
