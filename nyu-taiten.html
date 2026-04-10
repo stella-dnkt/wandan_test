@@ -115,7 +115,7 @@ col.num-col{width:calc((100% - 52px)/6)}
     </label>
     <label style="font-size:15px;">クーポン:
       <input id="coupon" type="number" min="0" step="10" placeholder="0" style="font-size:15px;width:80px;margin-left:4px;padding:4px 6px;border:1px solid #ccc;border-radius:6px;">
-      <span style="font-size:15px;margin-left:2px;">円</span>
+      <span style="font-size:15px;margin-left:2px;">円分</span>
     </label>
     <button onclick="clearSelection()" style="font-size:14px;padding:6px 12px;color:#666;border:0.5px solid #ccc;border-radius:6px;background:transparent;cursor:pointer;">クリア</button>
   </div>
@@ -324,7 +324,7 @@ function updateChange(){
   document.getElementById('label-price').textContent = price.toLocaleString();
   let members = '（大人：'+selCol+'名　小人：'+selRow+'名';
   if(goods) members += '　物販：'+goods.toLocaleString()+'円';
-  if(coupon) members += '　クーポン：－'+coupon.toLocaleString()+'円';
+  if(coupon) members += '　クーポン：－'+coupon.toLocaleString()+'円分';
   members += '）';
   document.getElementById('label-members').textContent = members;
   document.getElementById('label-deposit').textContent = dep.toLocaleString();
