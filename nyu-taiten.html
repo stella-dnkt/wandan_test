@@ -8,7 +8,8 @@
 *{box-sizing:border-box}
 body{font-family:sans-serif;padding:12px;margin:0}
 
-.row{display:flex;align-items:center;gap:8px;background:#fff;border:0.5px solid #ddd;border-radius:10px;padding:12px 14px;}
+.row{display:flex;align-items:center;gap:8px;background:#fff;border-bottom:0.5px solid #ddd;padding:12px 14px;}
+.row:last-child{border-bottom:none;}
 .num{font-size:16px;color:#666;min-width:26px;font-weight:500;}
 .btn{font-size:15px;font-weight:500;padding:8px 14px;border-radius:6px;cursor:pointer;border:0.5px solid;white-space:nowrap;transition:opacity 0.1s;}
 .btn:disabled{opacity:0.35;cursor:default;}
@@ -70,7 +71,7 @@ col.num-col{width:calc((100% - 52px)/6)}
       <button onclick="resetAll()" style="font-size:14px;padding:7px 14px;color:#666;border:0.5px solid #ccc;border-radius:6px;background:transparent;cursor:pointer;">リセット</button>
     </div>
   </div>
-  <div id="list" style="display:flex;flex-direction:column;gap:8px;"></div>
+  <div id="list" style="display:flex;flex-direction:column;border:0.5px solid #ddd;border-radius:10px;overflow:hidden;"></div>
 </div>
 
 <hr class="divider">
@@ -133,7 +134,8 @@ col.num-col{width:calc((100% - 52px)/6)}
 
 <script>
 /* ---- 入退店 ---- */
-const N = 10, STORAGE_KEY = 'checkin-list-v1';
+const N = 20, STORAGE_KEY = 'checkin-list-v1';
+let visibleN = 10;
 let states = Array.from({length:N}, () => ({inTime:null, outTime:null, prev:null}));
 let pendingReentryIndex = null;
 
@@ -191,6 +193,7 @@ function render(){
   const list = document.getElementById('list');
   list.innerHTML = '';
   states.forEach((s,i)=>{
+    if(i >= visibleN) return;
     const row = document.createElement('div');
     row.className = 'row';
 
@@ -243,10 +246,33 @@ function render(){
     row.appendChild(btnUndo); row.appendChild(elapsed); row.appendChild(times);
     list.appendChild(row);
   });
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;border-top:0.5px solid #ddd;';
+
+  if(visibleN < N){
+    const addBtn = document.createElement('button');
+    addBtn.textContent = '＋';
+    const hasMinus = visibleN > 10;
+    addBtn.style.cssText = 'flex:1;font-size:15px;font-weight:500;padding:10px 0;border:none;'+(hasMinus?'border-right:0.5px solid #ddd;':'')+'background:#fafafa;color:#888;cursor:pointer;';
+    addBtn.onclick = ()=>{ visibleN = Math.min(visibleN+5, N); render(); };
+    btnRow.appendChild(addBtn);
+  }
+
+  if(visibleN > 10){
+    const subBtn = document.createElement('button');
+    subBtn.textContent = '－';
+    subBtn.style.cssText = 'flex:1;font-size:15px;font-weight:500;padding:10px 0;border:none;background:#fafafa;color:#c66;cursor:pointer;';
+    subBtn.onclick = ()=>{ visibleN = Math.max(visibleN-5, 10); render(); };
+    btnRow.appendChild(subBtn);
+  }
+
+  if(btnRow.children.length > 0) list.appendChild(btnRow);
 }
 
 function resetAll(){
   states.forEach((_,i)=>{states[i]={inTime:null,outTime:null,prev:null};});
+  visibleN = 10;
   render(); saveStates();
 }
 setInterval(()=>{if(states.some(s=>s.inTime&&!s.outTime))render();}, 10000);
