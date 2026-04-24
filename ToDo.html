@@ -124,7 +124,16 @@
   const todayISO = new Date().toISOString().slice(0,10);
   const dateInput = document.getElementById("todo-date");
 
-  function save() { localStorage.setItem("todos", JSON.stringify(todos)); }
+  function save() {
+    localStorage.setItem("todos", JSON.stringify(todos));
+    // 自動エクスポート
+    const blob = new Blob([JSON.stringify(todos, null, 2)], {type: "application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "todo_backup.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
 
   function setUndecidedMode(on) {
     isUndecided = on;
