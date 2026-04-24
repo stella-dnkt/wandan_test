@@ -27,46 +27,30 @@
   #todo-list .text-block.title.cancelled { text-decoration: line-through; color: #888; }
   button.update-btn, button.edit-btn, button.delete-btn { font-size: 0.8rem; padding: 0.3rem 0.5rem; cursor: pointer; user-select: none; }
   button.edit-btn, button.delete-btn { margin-left: 0.3rem; }
-
   .update-btn[data-tooltip] { position: relative; }
   .update-btn[data-tooltip]:hover::after {
     content: attr(data-tooltip);
-    position: absolute;
-    left: 0;
-    top: 120%;
-    z-index: 10;
-    padding: 8px 10px;
-    border: 1px solid #ccc;
-    background: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,.15);
-    border-radius: 6px;
-    white-space: pre;
-    font-size: 12px;
-    line-height: 1.4;
-    color: #333;
-    min-width: 220px;
+    position: absolute; left: 0; top: 120%; z-index: 10;
+    padding: 8px 10px; border: 1px solid #ccc; background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15); border-radius: 6px;
+    white-space: pre; font-size: 12px; line-height: 1.4; color: #333; min-width: 220px;
   }
-
-  /* 保存状態バー */
-  #save-status {
-    font-size: 13px;
-    padding: 4px 10px;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-    min-height: 24px;
-    text-align: center;
-    transition: opacity 0.5s;
-  }
-  #save-status.saving { background: #fff3cd; color: #856404; }
-  #save-status.saved  { background: #d4edda; color: #155724; }
-  #save-status.error  { background: #f8d7da; color: #721c24; }
-  #save-status.loading { background: #cce5ff; color: #004085; }
+  #data-controls { margin-bottom: 0.5rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+  #data-controls button { font-size: 14px; padding: 0.3rem 0.8rem; cursor: pointer; border: 1px solid #555; border-radius: 4px; background: #f5f5f5; }
+  #data-controls button:hover { background: #e0e0e0; }
 </style>
 </head>
 <body>
 
 <div id="today-display"></div>
-<div id="save-status" class="loading">データを読み込み中...</div>
+
+<div id="data-controls">
+  <button id="exportBtn">📥 JSONエクスポート</button>
+  <label style="margin:0;">
+    <button type="button" onclick="document.getElementById('importFile').click()">📤 JSONインポート</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" />
+  </label>
+</div>
 
 <div class="tab-buttons">
   <button id="tab-upcoming" class="active">今後の予定</button>
@@ -132,91 +116,25 @@
 </div>
 
 <script>
-  // ── ストレージキー ──────────────────────────────
-  const STORAGE_KEY = "todo_data";
-
-  // ── 状態 ────────────────────────────────────────
-  let todos = [];
+  let todos = JSON.parse(localStorage.getItem("todos") || "[]");
   let editIndex = -1;
   let isUndecided = false;
-  let currentTab = "upcoming";
   const statuses = ["未着手", "作業中", "引き継ぎ", "完了", "中止"];
   const UNDECIDED_DATE = "2100-01-01";
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayISO = new Date().toISOString().slice(0,10);
   const dateInput = document.getElementById("todo-date");
 
-  // ── ステータスバー ───────────────────────────────
-  function setStatus(msg, cls) {
-    const el = document.getElementById("save-status");
-    el.textContent = msg;
-    el.className = cls;
-  }
+  function save() { localStorage.setItem("todos", JSON.stringify(todos)); }
 
-  // ── サーバー保存 ─────────────────────────────────
-  async function saveTodos() {
-    setStatus("保存中...", "saving");
-    try {
-      const result = await window.storage.set(STORAGE_KEY, JSON.stringify(todos));
-      if (!result) throw new Error("保存失敗");
-      setStatus("✓ サーバーに保存済み", "saved");
-      // 3秒後にメッセージを薄くする
-      setTimeout(() => {
-        const el = document.getElementById("save-status");
-        el.style.opacity = "0.4";
-      }, 3000);
-    } catch (e) {
-      setStatus("⚠ 保存失敗。ローカルに退避します。", "error");
-      localStorage.setItem(STORAGE_KEY + "_backup", JSON.stringify(todos));
-    }
-  }
-
-  // ── サーバー読み込み ─────────────────────────────
-  async function loadTodos() {
-    setStatus("データを読み込み中...", "loading");
-    try {
-      const result = await window.storage.get(STORAGE_KEY);
-      if (result && result.value) {
-        todos = JSON.parse(result.value);
-      } else {
-        // サーバーにデータなし → localStorageのデータを移行
-        const legacy = localStorage.getItem("todos");
-        if (legacy) {
-          todos = JSON.parse(legacy);
-          setStatus("旧データを移行中...", "saving");
-          await saveTodos();
-          localStorage.removeItem("todos");
-        } else {
-          todos = [];
-        }
-      }
-      setStatus("✓ 読み込み完了", "saved");
-      setTimeout(() => {
-        const el = document.getElementById("save-status");
-        el.style.opacity = "0.4";
-      }, 2000);
-    } catch (e) {
-      // サーバーアクセス失敗 → localStorageにフォールバック
-      const fallback = localStorage.getItem("todos") || localStorage.getItem(STORAGE_KEY + "_backup");
-      todos = fallback ? JSON.parse(fallback) : [];
-      setStatus("⚠ サーバー接続失敗。ローカルデータを使用中。", "error");
-    }
-    renderTodoList();
-  }
-
-  // ── UI ──────────────────────────────────────────
   function setUndecidedMode(on) {
     isUndecided = on;
-    if (on) {
-      dateInput.value = "";
-      dateInput.removeAttribute("required");
-    } else {
-      dateInput.setAttribute("required", "");
-    }
+    if (on) { dateInput.value = ""; dateInput.removeAttribute("required"); }
+    else { dateInput.setAttribute("required", ""); }
   }
 
   function updateTodayDisplay() {
     const today = new Date();
-    const y = today.getFullYear(), m = today.getMonth() + 1, d = today.getDate();
+    const y = today.getFullYear(), m = today.getMonth()+1, d = today.getDate();
     const weekNames = ["日","月","火","水","木","金","土"];
     const w = weekNames[today.getDay()];
     const reiwaYear = y - 2018;
@@ -228,26 +146,28 @@
     td.appendChild(span); td.appendChild(document.createTextNode("）"));
   }
 
+  let currentTab = "upcoming";
+
   function renderTodoList() {
     const todoList = document.getElementById("todo-list");
     todoList.innerHTML = "";
     let filtered = (currentTab === "upcoming")
-      ? todos.filter(t => t.date >= todayISO).sort((a, b) => a.date.localeCompare(b.date))
-      : todos.filter(t => t.date < todayISO).sort((a, b) => b.date.localeCompare(a.date));
+      ? todos.filter(t => t.date >= todayISO).sort((a,b) => a.date.localeCompare(b.date))
+      : todos.filter(t => t.date < todayISO).sort((a,b) => b.date.localeCompare(a.date));
     document.getElementById("list-title").textContent = (currentTab === "upcoming") ? "今後の予定" : "過去の予定";
 
     filtered.forEach(t => {
       const li = document.createElement("li");
-      if (t.date === todayISO) li.classList.add("today");
-      if (t.status === "完了") li.classList.add("done");
-      if (t.status === "中止") li.classList.add("cancelled");
+      if(t.date === todayISO) li.classList.add("today");
+      if(t.status === "完了") li.classList.add("done");
+      if(t.status === "中止") li.classList.add("cancelled");
 
       const textBlock = document.createElement("div"); textBlock.className = "text-block";
       const dateDiv = document.createElement("div"); dateDiv.className = "date";
       dateDiv.textContent = `${t.date === UNDECIDED_DATE ? "日程未定" : t.date} [${t.status}]`;
 
       const titleDiv = document.createElement("div"); titleDiv.className = "title";
-      if (t.status === "中止") titleDiv.classList.add("cancelled");
+      if(t.status === "中止") titleDiv.classList.add("cancelled");
       let firstLine = t.content.split(/\r?\n/)[0] || "";
       titleDiv.textContent = `【${t.title}】 ${firstLine}`;
 
@@ -258,28 +178,20 @@
       textBlock.append(dateDiv, titleDiv, contentDiv);
 
       const updateBtn = document.createElement("button");
-      updateBtn.textContent = "[更新]";
-      updateBtn.className = "update-btn";
+      updateBtn.textContent = "[更新]"; updateBtn.className = "update-btn";
       updateBtn.setAttribute("data-tooltip", "ステータスを変更します\n未着手＞作業中＞引き継ぎ＞完了＞中止");
-      updateBtn.onclick = async () => {
+      updateBtn.onclick = () => {
         const idx = todos.indexOf(t);
-        todos[idx].status = statuses[(statuses.indexOf(t.status) + 1) % statuses.length];
-        await saveTodos();
-        renderTodoList();
+        todos[idx].status = statuses[(statuses.indexOf(t.status)+1) % statuses.length];
+        save(); renderTodoList();
       };
 
-      const editBtn = document.createElement("button"); editBtn.textContent = "[編集]";
-      editBtn.className = "edit-btn";
+      const editBtn = document.createElement("button"); editBtn.textContent = "[編集]"; editBtn.className = "edit-btn";
       editBtn.onclick = () => startEdit(todos.indexOf(t));
 
-      const deleteBtn = document.createElement("button"); deleteBtn.textContent = "[削除]";
-      deleteBtn.className = "delete-btn";
-      deleteBtn.onclick = async () => {
-        if (confirm("削除してもよろしいですか？")) {
-          todos.splice(todos.indexOf(t), 1);
-          await saveTodos();
-          renderTodoList();
-        }
+      const deleteBtn = document.createElement("button"); deleteBtn.textContent = "[削除]"; deleteBtn.className = "delete-btn";
+      deleteBtn.onclick = () => {
+        if(confirm("削除してもよろしいですか？")){ todos.splice(todos.indexOf(t),1); save(); renderTodoList(); }
       };
 
       li.append(updateBtn, editBtn, deleteBtn, textBlock);
@@ -290,12 +202,8 @@
   function startEdit(i) {
     editIndex = i;
     const t = todos[i];
-    if (t.date === UNDECIDED_DATE) {
-      setUndecidedMode(true);
-    } else {
-      setUndecidedMode(false);
-      dateInput.value = t.date;
-    }
+    if (t.date === UNDECIDED_DATE) { setUndecidedMode(true); }
+    else { setUndecidedMode(false); dateInput.value = t.date; }
     document.getElementById("todo-title").value = t.title;
     document.getElementById("todo-content").value = t.content;
     document.getElementById("todo-status").value = t.status;
@@ -305,36 +213,31 @@
   }
 
   document.getElementById("cancelEditBtn").onclick = () => {
-    editIndex = -1;
-    setUndecidedMode(false);
+    editIndex = -1; setUndecidedMode(false);
     document.getElementById("todo-form").reset();
     document.getElementById("form-title").textContent = "ToDo作成";
     document.getElementById("addBtn").textContent = "追加";
     document.getElementById("cancelEditBtn").style.display = "none";
   };
 
-  dateInput.addEventListener("input", () => {
-    if (dateInput.value) setUndecidedMode(false);
-  });
+  dateInput.addEventListener("input", () => { if (dateInput.value) setUndecidedMode(false); });
 
-  document.getElementById("todo-form").onsubmit = async e => {
+  document.getElementById("todo-form").onsubmit = e => {
     e.preventDefault();
     let date = dateInput.value;
     if (isUndecided) date = UNDECIDED_DATE;
     const title = document.getElementById("todo-title").value;
     const content = document.getElementById("todo-content").value;
     const status = document.getElementById("todo-status").value;
-    if (editIndex === -1) {
-      todos.push({ date, title, content, status });
-    } else {
-      todos[editIndex] = { date, title, content, status };
+    if(editIndex === -1) todos.push({date, title, content, status});
+    else {
+      todos[editIndex] = {date, title, content, status};
       editIndex = -1;
       document.getElementById("form-title").textContent = "ToDo作成";
       document.getElementById("addBtn").textContent = "追加";
       document.getElementById("cancelEditBtn").style.display = "none";
     }
-    await saveTodos();
-    setUndecidedMode(false);
+    save(); setUndecidedMode(false);
     document.getElementById("todo-form").reset();
     renderTodoList();
   };
@@ -348,14 +251,43 @@
     const now = new Date();
     const txt = `[${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,"0")}/${String(now.getDate()).padStart(2,"0")}  ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}]`;
     const start = textarea.selectionStart;
-    textarea.value = textarea.value.slice(0, start) + txt + textarea.value.slice(textarea.selectionEnd);
+    textarea.value = textarea.value.slice(0,start) + txt + textarea.value.slice(textarea.selectionEnd);
     textarea.selectionStart = textarea.selectionEnd = start + txt.length;
     textarea.focus();
   };
 
-  // ── 起動 ────────────────────────────────────────
+  // エクスポート
+  document.getElementById("exportBtn").onclick = () => {
+    const blob = new Blob([JSON.stringify(todos, null, 2)], {type: "application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `todo_backup_${todayISO}.json`;
+    a.click();
+  };
+
+  // インポート
+  document.getElementById("importFile").onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        if (!Array.isArray(imported)) throw new Error();
+        if (!confirm(`${imported.length}件のデータをインポートします。現在のデータと統合されます。よろしいですか？`)) return;
+        const existingKeys = new Set(todos.map(t => `${t.date}|${t.title}|${t.content}`));
+        const newItems = imported.filter(t => !existingKeys.has(`${t.date}|${t.title}|${t.content}`));
+        todos = [...todos, ...newItems];
+        save(); renderTodoList();
+        alert(`${newItems.length}件を追加しました（重複${imported.length - newItems.length}件はスキップ）。`);
+      } catch { alert("JSONの読み込みに失敗しました。"); }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
   updateTodayDisplay();
-  loadTodos();
+  renderTodoList();
 </script>
 </body>
 </html>
